@@ -48,9 +48,9 @@ class AccChainTester(
     beatBytes: Int = 4,
     silentFail: Boolean = false,
     accAddress: AddressSet,
-    dspQueueBaseAddress: BigInt
+    accQueueBase: BigInt
 ) extends PeekPokeTester(dut.module) with AXI4StreamModel with AXI4MasterModel {
-  
+
   // Connect AXI4MasterModel to ioMem of DUT
    override def memAXI: AXI4Bundle = dut.ioMem.get
    val mod    = dut.module
@@ -104,20 +104,20 @@ class AccChainSpec extends FlatSpec with Matchers {
     accDepth = 8
   )
   val accAddress = AddressSet(0x001000, 0xFF)
-  val dspQueueBaseAddress = 0x010000
+  val accQueueBase = 0x010000
   val silentFail  = false
   val beatBytes   = 4
   
-  val testModule = LazyModule(new AccumulatorChain(params, false, 4, accAddress, dspQueueBaseAddress) with AccumulatorChainPins)
+  val testModule = LazyModule(new AccumulatorChain(params, accAddress, accQueueBase, 4) with AccumulatorChainPins)
 
   
-  it should "Test AXI4 Dsp FIFO block" in {
+  it should "Test accumulator chain" in {
     chisel3.iotesters.Driver.execute(Array("-tiwv", "-tbn", "verilator", "-tivsuv"), () => testModule.module) {
           c => new AccChainTester(dut = testModule,
                                 beatBytes = beatBytes,
                                 silentFail  = silentFail,
                                 accAddress = accAddress,
-                                dspQueueBaseAddress = dspQueueBaseAddress
+                                accQueueBase = accQueueBase
                                 )
     } should be (true)
   }

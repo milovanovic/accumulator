@@ -17,18 +17,18 @@ import freechips.rocketchip.tilelink._
 class AccumulatorChain[T <: Data : Real : BinaryRepresentation]
 (
   val accParams: AccParams[T],
-  val mapMem: Boolean = true,
-  val beatBytes: Int,
+  //val mapMem: Boolean = true,
   accAddressSet: AddressSet,
  // dspFIFOBaseAddress: BigInt
-  dspQueueBaseAddress: BigInt
+  accQueueBase: BigInt,
+  val beatBytes: Int,
 )(implicit p: Parameters) extends LazyModule {
   val len: Int = accParams.maxNumWindows
   
 //   Instantiate lazy modules
  val accumulator = LazyModule(new AXI4AccumulatorBlock(accParams, accAddressSet, beatBytes))
  //val dspFIFO = LazyModule(new AXI4DspFIFO(len, mapMem, dspFIFOBaseAddress))
- val dspQueue = LazyModule(new AXI4DspQueueBlock(accParams.accDepth, dspQueueBaseAddress))
+ val dspQueue = LazyModule(new AXI4DspQueueBlock(accParams.accDepth, accQueueBase))
  
   val lhs = AXI4StreamIdentityNode()
   val rhs = AXI4StreamIdentityNode()
@@ -57,7 +57,7 @@ object AccChainApp extends App {
   
   // can work for beatBytes equal to 4 and beatBytes equal to 8
   //val testModule = LazyModule(new AccumulatorChain(params, false, 8, AddressSet(0x001000, 0xFF), 0x010000) {
-  val testModule = LazyModule(new AccumulatorChain(params, false, 4, AddressSet(0x001000, 0xFF), 0x010000) {
+  val testModule = LazyModule(new AccumulatorChain(params, AddressSet(0x001000, 0xFF), 0x010000, 4) {
   
     //def standaloneParams = AXI4BundleParameters(addrBits = 64, dataBits = 64, idBits = 1)
     def standaloneParams = AXI4BundleParameters(addrBits = 32, dataBits = 32, idBits = 1)

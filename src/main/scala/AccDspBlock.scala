@@ -47,7 +47,8 @@ abstract class AccumulatorBlock [T <: Data : Real: BinaryRepresentation, D, U, E
     
     // Connect inputs
     acc.io.in.valid    := in.valid
-    acc.io.in.bits     := in.bits.data.asTypeOf(params.proto)
+    //acc.io.in.bits     := in.bits.data.asTypeOf(params.proto)
+    acc.io.in.bits     := (in.bits.data >> 16).asTypeOf(params.proto)//.asTypeOf(params.proto)
     in.ready           := acc.io.in.ready
     acc.io.lastIn      := in.bits.last
     

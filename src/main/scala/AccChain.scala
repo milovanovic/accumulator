@@ -17,11 +17,9 @@ import freechips.rocketchip.tilelink._
 class AccumulatorChain[T <: Data : Real : BinaryRepresentation]
 (
   val accParams: AccParams[T],
-  //val mapMem: Boolean = true,
   accAddressSet: AddressSet,
- // dspFIFOBaseAddress: BigInt
   accQueueBase: BigInt,
-  val beatBytes: Int,
+  val beatBytes: Int
 )(implicit p: Parameters) extends LazyModule {
   val len: Int = accParams.maxNumWindows
   

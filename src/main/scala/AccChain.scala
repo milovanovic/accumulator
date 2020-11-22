@@ -28,12 +28,15 @@ class AccumulatorChain[T <: Data : Real : BinaryRepresentation]
  //val dspFIFO = LazyModule(new AXI4DspFIFO(len, mapMem, dspFIFOBaseAddress))
  val dspQueue = LazyModule(new AXI4DspQueueBlock(accParams.accDepth, accQueueBase))
  
-  val lhs = AXI4StreamIdentityNode()
-  val rhs = AXI4StreamIdentityNode()
-  rhs := dspQueue.streamNode := accumulator.streamNode := lhs
+  //val lhs = AXI4StreamIdentityNode()
+  //val rhs = AXI4StreamIdentityNode()
+  //rhs := dspQueue.streamNode := accumulator.streamNode := lhs
+  dspQueue.streamNode := accumulator.streamNode
   
+  val streamNode = NodeHandle(accumulator.streamNode, dspQueue.streamNode)
+    
   // From standalone blocks
-  val streamNode = NodeHandle(lhs.inward, rhs.outward)
+ // val streamNode = NodeHandle(lhs.inward, rhs.outward)
   
   lazy val blocks = Seq(dspQueue, accumulator)
   val bus = LazyModule(new AXI4Xbar)
@@ -76,7 +79,9 @@ object AccChainApp extends App {
     ioOutNode :=
       AXI4StreamToBundleBridge(AXI4StreamSlaveParameters()) :=
       streamNode :=
-      BundleBridgeToAXI4Stream(AXI4StreamMasterParameters(n = 4)) :=
+      // previous version!
+   //   BundleBridgeToAXI4Stream(AXI4StreamMasterParameters(n = 4)) :=
+      BundleBridgeToAXI4Stream(AXI4StreamMasterParameters(n = 2)) :=
       ioInNode
 
     val in = InModuleBody { ioInNode.makeIO() }

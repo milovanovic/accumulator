@@ -37,6 +37,8 @@ trait AccumulatorChainPins extends AccumulatorChain[FixedPoint] {
     AXI4StreamToBundleBridge(AXI4StreamSlaveParameters()) :=
     streamNode :=
     BundleBridgeToAXI4Stream(AXI4StreamMasterParameters(n = 4)) :=
+  // changed to 2
+  //    BundleBridgeToAXI4Stream(AXI4StreamMasterParameters(n = 2)) :=
     ioInNode
 
   val in = InModuleBody { ioInNode.makeIO() }

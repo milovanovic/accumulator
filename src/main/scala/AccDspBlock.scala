@@ -17,12 +17,24 @@ import freechips.rocketchip.tilelink._
 
 abstract class AccumulatorBlock [T <: Data : Real: BinaryRepresentation, D, U, E, O, B <: Data] (params: AccParams[T], beatBytes: Int) extends LazyModule()(Parameters.empty) with DspBlock[D, U, E, O, B] with HasCSR {
 
-  val streamNode = AXI4StreamIdentityNode()
-
+  val masterParams = AXI4StreamMasterParameters(
+    name = "AXI4 Stream Accumulator",
+    n = 2, // just 2*8 -> 16 bits
+    numMasters = 1
+  )
+  val slaveParams = AXI4StreamSlaveParameters()
+  
+  val slaveNode  = AXI4StreamSlaveNode(slaveParams)
+  val masterNode = AXI4StreamMasterNode(masterParams)
+  
+  val streamNode = NodeHandle(slaveNode, masterNode)
+  
   lazy val module = new LazyModuleImp(this) {
-    val (in, _)  = streamNode.in(0)
-    val (out, _) = streamNode.out(0)
-
+//     val (in, _)  = streamNode.in(0)
+//     val (out, _) = streamNode.out(0)
+    val (out, edgeOut) = masterNode.out.head
+    val (in, edgeIn) = slaveNode.in.head
+    
     // Accumulator module
     val acc = Module(new Accumulator(params))
 
@@ -47,8 +59,9 @@ abstract class AccumulatorBlock [T <: Data : Real: BinaryRepresentation, D, U, E
     
     // Connect inputs
     acc.io.in.valid    := in.valid
-    //acc.io.in.bits     := in.bits.data.asTypeOf(params.proto)
-    acc.io.in.bits     := (in.bits.data >> 16).asTypeOf(params.proto)//.asTypeOf(params.proto)
+    // This is question and depends on the block which precede and also depends on pin configurations!!! 
+    acc.io.in.bits     := in.bits.data.asTypeOf(params.proto)
+    //acc.io.in.bits     := (in.bits.data >> 16).asTypeOf(params.proto)//.asTypeOf(params.proto)
     in.ready           := acc.io.in.ready
     acc.io.lastIn      := in.bits.last
     
@@ -78,19 +91,19 @@ class TLAccumulatorBlock[T <: Data : Real: BinaryRepresentation](val params: Acc
 }
 
 // simple verilog generation test
-object AccBlockApp extends App
-{
-  val params: AccParams[FixedPoint] = AccParams(
-    proto = FixedPoint(16.W, 14.BP),
-    protoAcc = FixedPoint(64.W, 14.BP)
-    // others parameters have default values
-  )
-  implicit val p: Parameters = Parameters.empty
-  val baseAddress = 0x500 
-  
-  val testModule = LazyModule(new AXI4AccumulatorBlock(params, AddressSet(baseAddress + 0x100, 0xFF), _beatBytes = 4) with dspblocks.AXI4StandaloneBlock {
-    override def standaloneParams = AXI4BundleParameters(addrBits = 32, dataBits = 32, idBits = 1)
-  })
-  
-  chisel3.Driver.execute(args, ()=> testModule.module)
-}
+// object AccBlockApp extends App
+// {
+//   val params: AccParams[FixedPoint] = AccParams(
+//     proto = FixedPoint(16.W, 14.BP),
+//     protoAcc = FixedPoint(64.W, 14.BP)
+//     // others parameters have default values
+//   )
+//   implicit val p: Parameters = Parameters.empty
+//   val baseAddress = 0x500 
+//   
+//   val testModule = LazyModule(new AXI4AccumulatorBlock(params, AddressSet(baseAddress + 0x100, 0xFF), _beatBytes = 4) with dspblocks.AXI4StandaloneBlock {
+//     override def standaloneParams = AXI4BundleParameters(addrBits = 32, dataBits = 32, idBits = 1)
+//   })
+//   
+//   chisel3.Driver.execute(args, ()=> testModule.module)
+// }

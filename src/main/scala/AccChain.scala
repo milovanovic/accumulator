@@ -38,11 +38,14 @@ class AccumulatorChain[T <: Data : Real : BinaryRepresentation]
   // From standalone blocks
  // val streamNode = NodeHandle(lhs.inward, rhs.outward)
   
+  //:= AXI4Buffer(BufferParams.flow)
+  
   lazy val blocks = Seq(dspQueue, accumulator)
   val bus = LazyModule(new AXI4Xbar)
   val mem = Some(bus.node)
   for (b <- blocks) {
-    b.mem.foreach { _ := bus.node }
+    // use default parameters for AXI4Buffer, no flow, no pipe!
+    b.mem.foreach { _ := AXI4Buffer() := bus.node }
   }
   
   lazy val module = new LazyModuleImp(this)

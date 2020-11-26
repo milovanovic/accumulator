@@ -1,8 +1,13 @@
-Accumulator written in Chisel HDL
+Digital Accumulator written in Chisel HDL
 =======================================================
-
+[![Build Status](https://travis-ci.org/milovanovic/accumulator.svg?branch=master)](https://travis-ci.org/milovanovic/accumulator)
 ## Overview
 This repository  contains accumulator module written in [Chisel ](https://www.chisel-lang.org/) hardware design language.  In the text below, module specification together with parameters definition, description of the interface and control logic is given. The accumulator consists of two stages, first stage accumulates data and drives second stage while second stage is actually simple Queue which should be controlled in that way that it never becomes full (prevent data loss). With those two stages, continues data accumulation is accomplished and slow data rate can be provided at the output of the accumulator.
+
+## Spectral Accumulator
+
+Global block scheme of the accumulator showing inout signals as well as control registers and parameters is presented in the figure below.
+![accumulator](./doc/images/accumulator.svg)
 
 ### Interface of the first stage of the Accumulator
 
@@ -45,8 +50,9 @@ Previously explained module is described with following Scala files available in
  * `AccChain.scala` - contains chain which connects first stage `Accumulator` and second stage `DspQueueBlock`
  * `DspQueueBlock.scala` - contains simple `DspQueueBlock` module
  
+ 
 ### DspBlock
-The first stage should be  wrapped as generic DSP block in a diplomatic interface which is actually AXI4-Stream for inputs and outputs and memory-mapped (TileLink, AXI4, APB or AHB) for control and status registers. This wrapping is important so that first and second stage can be easily united as `DspChain` and as that, used in larger systems which require continues data streaming and data accumulation.
+The first stage is wrapped as generic DSP block in a diplomatic interface which is actually AXI4-Stream for inputs and outputs and memory-mapped (TileLink, AXI4, APB or AHB) for control and status registers. This wrapping is important so that first and second stage can be easily united as `DspChain` and as that, used in larger systems which require continues data streaming and data accumulation.
 
 ## Parameter settings
 

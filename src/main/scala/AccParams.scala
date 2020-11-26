@@ -13,7 +13,7 @@ case class AccParams[T <: Data: Real](
   protoAcc: T,                    // accumulator data type
   maxNumWindows: Int = 65536,     // defines maximum number of accumulated fft windows
   accDepth: Int = 1024,           // number of memory locations inside accumulator (number of points in FFT)
-  roundingMode : TrimType = RoundHalfUp // trim type after div 2 operation
+  //roundingMode : TrimType = RoundHalfUp // trim type after div 2 operation
 ) {
   requireIsChiselType(proto,  s"($proto) must be chisel type")
   requireIsChiselType(protoAcc,  s"($protoAcc) must be chisel type")

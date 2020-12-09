@@ -19,6 +19,7 @@ Global block scheme of the accumulator showing inout signals as well as control 
 * Optional control registers: 
 * `accDepthReg` - number of used memory locations inside accumulator (run time configurable fft size requires that this parameter is also run time configurable)
 * `accWindowsReg` - defines number of accumulated fft windows
+* `bitReversal` -  determines whether output data are in natural or in bit reverse order
 
 #### Outputs
 
@@ -72,8 +73,8 @@ The following software packages should be installed prior to running this projec
 
 ## Tests
 
-Besides main source code, some tests for accumulator module are provided in this repository. Below is given list of the files located in `src/test/scala` which describe different testers and test cases.   
-
+Besides main source code, some tests for accumulator module are provided in this repository. Below is given list of the files located in `src/test/scala` which describe different testers and test cases.
+* `FixedAccumulatorTester` - describes tester with test functions used for testing first stage of the accumulator
 * `AccFirstStageSpec` -  contains tests for the first stage of the accumulator
 * `AccChainSpec` - contains test for `AccChain` module. Test uses `AXI4MasterModel` and `AXI4StreamModel` for proper register initialization and streaming transactions generation.
 

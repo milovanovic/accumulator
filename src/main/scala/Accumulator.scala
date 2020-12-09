@@ -12,6 +12,8 @@ import dsptools.numbers._
 import chisel3.experimental.FixedPoint
 import chisel3.internal.requireIsChiselType
 
+import scala.math._
+
 class AccIO[T <: Data: Real] (params: AccParams[T]) extends Bundle {
   val in = Flipped(Decoupled(params.proto))
   val lastIn = Input(Bool())
@@ -82,17 +84,17 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
         state := State.sLoadAndStore
       }
     }
-    // this state should take care also about init state
     //3
     is (State.sLoadAndStore) {
       when (io.in.fire() && io.lastIn) {
         state := State.sLoad
       }
-     .elsewhen (cntLoad === (io.accDepthReg - 1.U) && io.out.fire() && cntAcc < (io.accDepthReg - 1.U)) {
-       state := State.sInitStore
-     }
-     .elsewhen (cntLoad === (io.accDepthReg - 1.U) && io.out.fire() && io.in.fire() && cntAcc === (io.accDepthReg - 1.U)) {
+      .elsewhen (cntLoad === (io.accDepthReg - 1.U) && io.out.fire() && cntAcc < (io.accDepthReg - 1.U)) {
+        state := State.sInitStore
+      }
+      .elsewhen (cntLoad === (io.accDepthReg - 1.U) && io.out.fire() && io.in.fire() && cntAcc === (io.accDepthReg - 1.U)) {
         state := State.sStoreAndAcc
+        // this transition is never going to happen if bitReversal is included
       }
     }
     //4
@@ -105,13 +107,22 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
   val loadingStates = (state === State.sLoadAndStore) || (state === State.sLoad)
   val storingInitStates = (state === State.sInitStore) || (state === State.sLoadAndStore)
   val isTransit = (state === State.sStoreAndAcc && statePrev === State.sInitStore) || (statePrev === State.sLoadAndStore && state === State.sInitStore) || (statePrev === State.sLoadAndStore && state === State.sStoreAndAcc)
+  val isOnlyOneFrame = (state === State.sLoad && statePrev === State.sInitStore)
+  val doNotScale = RegInit(false.B)
   val isPrevStoreAndAcc = (statePrev === State.sStoreAndAcc) && (state === State.sLoadAndStore)
   
   dontTouch(isTransit)
   val lastSampleInWinStore = cntAcc === (io.accDepthReg - 1.U) && io.in.fire()
   val lastSampleInWinLoad  = cntLoad === (io.accDepthReg - 1.U) && io.out.fire()
   
-  when ((storingInitStates || isTransit) && ~isPrevStoreAndAcc) {
+  when(isOnlyOneFrame) {
+    doNotScale := true.B
+  }
+  when (state === State.sIdle) {
+    doNotScale := false.B
+  }
+  
+  when ((storingInitStates || isTransit) && ~isPrevStoreAndAcc || isOnlyOneFrame) {
     writeVal := inDelayed
   }
   .otherwise {
@@ -142,27 +153,31 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
   when (lastSampleInWinLoad) {
     cntLoad := 0.U
   }
+  ////////////////////////// Logic for bit reversal ///////////////////////////////////////////
   
-  val readAddress = Mux(loadingStates, cntLoad, cntAcc)
+  val log2Size = log2Up(params.accDepth)                   // nummber of stages in the FFT case
+  val subSizes = (1 to log2Size).map(d => pow(2, d).toInt) // all possible cases of the FFT stages (assumed is that run time configurability is included)
+  val subSizesWire = subSizes.map(e => e.U)
+  val bools = subSizesWire.map(e => e === io.accDepthReg)   // create conditions
+  val loadAddressBeforeBitReverse = Mux(last && io.out.ready, cntLoad + 1, cntLoad)
+  val cases = bools.zip(1 to log2Size).map { case (bool, numBits) =>
+    bool -> { Reverse(loadAddressBeforeBitReverse(numBits-1, 0)) }
+  }
+  val loadAddress = if (params.bitReversal) MuxCase(0.U(log2Size.W), cases) else loadAddressBeforeBitReverse
+  
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  val readAddress = Mux(loadingStates, loadAddress, cntAcc)
   dontTouch(readAddress)
-  
-  val addressReadTmp = Wire(cntLoad.cloneType)
-  
-  when (last && io.out.ready) {
-    addressReadTmp := cntLoad + 1.U
-  }
-  .otherwise {
-    addressReadTmp := readAddress
-  }
-  dontTouch(addressReadTmp)
   
   val rstProtoAcc = Wire(params.protoAcc)
   rstProtoAcc := Real[T].fromDouble(0.0)
-  readVal := mem.read(addressReadTmp)
+  readVal := mem.read(readAddress)
+  
   val outData = Wire(params.proto)
   
   //outData := readVal.div2(Log2(io.accWindowsReg)) - div2 can not accept chisel type for shift
-  outData := BinaryRepresentation[T].shr(readVal, Log2(io.accWindowsReg))
+  //outData := BinaryRepresentation[T].shr(readVal, Log2(io.accWindowsReg))
+  outData := Mux(doNotScale, readVal, BinaryRepresentation[T].shr(readVal, Log2(io.accWindowsReg)))
   
   val rstProto = Wire(params.proto)
   rstProto := Real[T].fromDouble(0.0)
@@ -172,9 +187,16 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
   }
   
   io.out.valid := RegNext(loadingStates) && state =/= State.sIdle
-  io.lastOut   := (RegNext(cntLoad) === (io.accDepthReg - 1.U) &&  io.out.fire()) && state === State.sLoad
+  io.lastOut   := (RegNext(loadAddressBeforeBitReverse) === (io.accDepthReg - 1.U) &&  io.out.fire()) && state === State.sLoad 
+  //(RegNext(cntLoad) === (io.accDepthReg - 1.U) &&  io.out.fire()) && state === State.sLoad
   io.out.bits  := outData 
-  io.in.ready  := (~loadingStates) || io.out.ready && state =/= State.sLoad
+  
+  if (!params.bitReversal) {
+    io.in.ready  := (~loadingStates) || io.out.ready && state =/= State.sLoad
+  }
+  else {
+    io.in.ready  := (~loadingStates)
+  }
 }
 
 object AccApp extends App

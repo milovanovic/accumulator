@@ -20,7 +20,7 @@ class AccIO[T <: Data: Real] (params: AccParams[T]) extends Bundle {
   
   val accDepthReg = Input(UInt(log2Ceil(params.accDepth + 1).W))
   val accWindowsReg = Input(UInt(log2Ceil(params.maxNumWindows + 1).W))
-
+  
   val out = Decoupled(params.proto)
   val lastOut = Output(Bool())
 
@@ -49,6 +49,10 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
   object State extends ChiselEnum {
     val sIdle, sInitStore, sStoreAndAcc, sLoadAndStore, sLoad = Value
   }
+  
+  val accWindowsReg = RegInit(params.maxNumWindows.U(log2Ceil(params.maxNumWindows + 1).W))
+  val accDepthReg = RegInit(params.accDepth.U(log2Ceil(params.accDepth + 1).W))
+  
   val state = RegInit(State.sIdle)
   val statePrev = RegInit(State.sIdle)
   statePrev := state
@@ -60,15 +64,19 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
     is (State.sIdle) {
       when (io.in.fire()) {
         state := State.sInitStore
+        // here define registers
+        accWindowsReg := io.accWindowsReg
+        accDepthReg := io.accDepthReg
       }
       last := false.B
     }
     //1
     is (State.sInitStore) {
-      when (cntAcc === (io.accDepthReg - 1.U) && io.in.fire() && io.lastIn) {
+    
+      when (cntAcc === (accDepthReg - 1.U) && io.in.fire() && io.lastIn) {
         state := State.sLoad
       }
-      .elsewhen (cntAcc === (io.accDepthReg - 1.U) && io.in.fire) {
+      .elsewhen (cntAcc === (accDepthReg - 1.U) && io.in.fire) {
         state := State.sStoreAndAcc
       }
     }
@@ -80,7 +88,7 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
           last := true.B
         }
       }
-      .elsewhen (cntWindows === (io.accWindowsReg - 1.U) && io.in.fire && cntAcc === (io.accDepthReg - 1.U)) {
+      .elsewhen (cntWindows === (accWindowsReg - 1.U) && io.in.fire && cntAcc === (accDepthReg - 1.U)) {
         state := State.sLoadAndStore
       }
     }
@@ -89,10 +97,12 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
       when (io.in.fire() && io.lastIn) {
         state := State.sLoad
       }
-      .elsewhen (cntLoad === (io.accDepthReg - 1.U) && io.out.fire() && cntAcc < (io.accDepthReg - 1.U)) {
+      .elsewhen (cntLoad === (accDepthReg - 1.U) && io.out.fire() && cntAcc < (accDepthReg - 1.U)) {
         state := State.sInitStore
+        accWindowsReg := io.accWindowsReg
+        accDepthReg := io.accDepthReg
       }
-      .elsewhen (cntLoad === (io.accDepthReg - 1.U) && io.out.fire() && io.in.fire() && cntAcc === (io.accDepthReg - 1.U)) {
+      .elsewhen (cntLoad === (accDepthReg - 1.U) && io.out.fire() && io.in.fire() && cntAcc === (accDepthReg - 1.U)) {
         state := State.sStoreAndAcc
         // this transition is never going to happen if bitReversal is included
       }
@@ -112,8 +122,8 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
   val isPrevStoreAndAcc = (statePrev === State.sStoreAndAcc) && (state === State.sLoadAndStore)
   
   dontTouch(isTransit)
-  val lastSampleInWinStore = cntAcc === (io.accDepthReg - 1.U) && io.in.fire()
-  val lastSampleInWinLoad  = cntLoad === (io.accDepthReg - 1.U) && io.out.fire()
+  val lastSampleInWinStore = cntAcc === (accDepthReg - 1.U) && io.in.fire()
+  val lastSampleInWinLoad  = cntLoad === (accDepthReg - 1.U) && io.out.fire()
   
   when(isOnlyOneFrame) {
     doNotScale := true.B
@@ -140,11 +150,11 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
     cntLoad := cntLoad + 1.U
   }
   
-  when (cntAcc === (io.accDepthReg - 1.U) && io.in.fire()) {
+  when (cntAcc === (accDepthReg - 1.U) && io.in.fire()) {
     cntWindows := cntWindows + 1.U
   }
   
-  when (cntWindows === (io.accWindowsReg - 1.U) && lastSampleInWinStore)  {
+  when (cntWindows === (accWindowsReg - 1.U) && lastSampleInWinStore)  {
     cntWindows := 0.U
   }
   when (lastSampleInWinStore) {
@@ -158,7 +168,7 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
   val log2Size = log2Up(params.accDepth)                   // nummber of stages in the FFT case
   val subSizes = (1 to log2Size).map(d => pow(2, d).toInt) // all possible cases of the FFT stages (assumed is that run time configurability is included)
   val subSizesWire = subSizes.map(e => e.U)
-  val bools = subSizesWire.map(e => e === io.accDepthReg)   // create conditions
+  val bools = subSizesWire.map(e => e === accDepthReg)   // create conditions
   val loadAddressBeforeBitReverse = Mux(last && io.out.ready, cntLoad + 1, cntLoad)
   val cases = bools.zip(1 to log2Size).map { case (bool, numBits) =>
     bool -> { Reverse(loadAddressBeforeBitReverse(numBits-1, 0)) }
@@ -177,7 +187,7 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
   
   //outData := readVal.div2(Log2(io.accWindowsReg)) - div2 can not accept chisel type for shift
   //outData := BinaryRepresentation[T].shr(readVal, Log2(io.accWindowsReg))
-  outData := Mux(doNotScale, readVal, BinaryRepresentation[T].shr(readVal, Log2(io.accWindowsReg)))
+  outData := Mux(doNotScale, readVal, BinaryRepresentation[T].shr(readVal, Log2(accWindowsReg)))
   
   val rstProto = Wire(params.proto)
   rstProto := Real[T].fromDouble(0.0)
@@ -187,7 +197,7 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
   }
   
   io.out.valid := RegNext(loadingStates) && state =/= State.sIdle
-  io.lastOut   := (RegNext(loadAddressBeforeBitReverse) === (io.accDepthReg - 1.U) &&  io.out.fire()) && state === State.sLoad 
+  io.lastOut   := (RegNext(loadAddressBeforeBitReverse) === (accDepthReg - 1.U) &&  io.out.fire()) && state === State.sLoad 
   //(RegNext(cntLoad) === (io.accDepthReg - 1.U) &&  io.out.fire()) && state === State.sLoad
   io.out.bits  := outData 
   

@@ -76,7 +76,8 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
       when (cntAcc === (accDepthReg - 1.U) && io.in.fire() && io.lastIn) {
         state := State.sLoad
       }
-      .elsewhen (cntAcc === (accDepthReg - 1.U) && io.in.fire) {
+//      .elsewhen (cntAcc === (accDepthReg - 1.U) && io.in.fire) {
+      .elsewhen (cntAcc === (accDepthReg - 1.U) && io.in.fire || (cntAcc > (accDepthReg - 1.U))) {
         state := State.sStoreAndAcc
       }
     }
@@ -104,6 +105,8 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
       }
       .elsewhen (cntLoad === (accDepthReg - 1.U) && io.out.fire() && io.in.fire() && cntAcc === (accDepthReg - 1.U)) {
         state := State.sStoreAndAcc
+        accWindowsReg := io.accWindowsReg
+        accDepthReg := io.accDepthReg
         // this transition is never going to happen if bitReversal is included
       }
     }
@@ -122,6 +125,7 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
   val isPrevStoreAndAcc = (statePrev === State.sStoreAndAcc) && (state === State.sLoadAndStore)
   
   dontTouch(isTransit)
+  //val lastSampleInWinStore = cntAcc === (accDepthReg - 1.U) && io.in.fire()
   val lastSampleInWinStore = cntAcc === (accDepthReg - 1.U) && io.in.fire()
   val lastSampleInWinLoad  = cntLoad === (accDepthReg - 1.U) && io.out.fire()
   
@@ -185,9 +189,11 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
   
   val outData = Wire(params.proto)
   
+  val divideNum = RegInit(params.maxNumWindows.U(log2Ceil(params.maxNumWindows + 1).W))
+  divideNum := accWindowsReg
   //outData := readVal.div2(Log2(io.accWindowsReg)) - div2 can not accept chisel type for shift
   //outData := BinaryRepresentation[T].shr(readVal, Log2(io.accWindowsReg))
-  outData := Mux(doNotScale, readVal, BinaryRepresentation[T].shr(readVal, Log2(accWindowsReg)))
+  outData := Mux(doNotScale, readVal, BinaryRepresentation[T].shr(readVal, Log2(divideNum)))
   
   val rstProto = Wire(params.proto)
   rstProto := Real[T].fromDouble(0.0)

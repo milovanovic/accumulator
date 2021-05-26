@@ -300,9 +300,54 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends DspTester(
         step(1)
       }
       step(2*params.accDepth)
+      
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+      ///////////////////////////// test accumulator window size switch ////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////////////////////////////////
+      
+      reset(1)
+
+      cntOut = 0
+      updatableSubVerbose.withValue(true) {
+        updatableDspVerbose.withValue(true) {
+          poke(c.io.in.valid, 0)
+          poke(c.io.out.ready, 0)
+
+          poke(c.io.lastIn, 0)
+          poke(c.io.accDepthReg, accDepth)
+          poke(c.io.accWindowsReg, numWind)
+        }
+      }
+      poke(c.io.out.ready, 1)
+      poke(c.io.in.valid, 1)
+     
+      for (iWin <- (0 until 2*numWind)) {
+        for ((in, idx) <- signal.zipWithIndex) {
+          poke(c.io.in.bits, in)
+          if (iWin == 1) {
+            if (idx < accDepth/2) {
+              poke(c.io.accWindowsReg, numWind/2)
+            }
+          }
+          step(1)
+        }
+      }
+//       step(params.accDepth)
+//       poke(c.io.out.ready, 1)
+//       while (cntOut < accDepth) {
+//         if (peek(c.io.out.valid)) {
+//           params.proto match {
+//             case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
+//             case _ =>  fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
+//           }
+//           output = output :+ peek(c.io.out.bits)
+//           cntOut += 1
+//         }
+//         step(1)
+//       }
+      step(2*params.accDepth)
     }
   }
-  
   
   def runTestWithBitReversal[T <: Data : Real : BinaryRepresentation](signal: Seq[Double], params: AccParams[T], numWind: Int, accDepth: Int, tol: Int = 3) = {
     require(accDepth <= params.accDepth)

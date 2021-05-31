@@ -311,7 +311,7 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends DspTester(
       updatableSubVerbose.withValue(true) {
         updatableDspVerbose.withValue(true) {
           poke(c.io.in.valid, 0)
-          poke(c.io.out.ready, 0)
+          poke(c.io.out.ready, 1)
 
           poke(c.io.lastIn, 0)
           poke(c.io.accDepthReg, accDepth)
@@ -326,14 +326,41 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends DspTester(
           poke(c.io.in.bits, in)
           if (iWin == 1) {
             if (idx < accDepth/2) {
-              poke(c.io.accWindowsReg, numWind/2)
+              poke(c.io.accWindowsReg, 1) // to test numWind = 1
+              //poke(c.io.accWindowsReg, numWind/2) // to test numWind > 1
             }
           }
           step(1)
         }
       }
-//       step(params.accDepth)
-//       poke(c.io.out.ready, 1)
+      // continue then with numWind
+      cntOut = 0
+      updatableSubVerbose.withValue(true) {
+        updatableDspVerbose.withValue(true) {
+          poke(c.io.in.valid, 0)
+          poke(c.io.out.ready, 1) // previous 0
+
+          poke(c.io.lastIn, 0)
+          poke(c.io.accDepthReg, accDepth)
+          poke(c.io.accWindowsReg, numWind)
+        }
+      }
+      
+      poke(c.io.in.valid, 1)
+      // check initial storing - enable data stream even though output side is not ready to accept data
+      //step(params.accDepth)
+      for (iWin <- (0 until numWind)) {
+        for ((in, idx) <- signal.zipWithIndex) {
+          poke(c.io.in.bits, in)
+          if (iWin == (numWind - 1) && idx == (accDepth - 1)) {
+            poke(c.io.lastIn, 1)
+          }
+          step(1)
+        }
+      }
+      poke(c.io.lastIn, 0)
+      //step(params.accDepth)
+      poke(c.io.out.ready, 1)
 //       while (cntOut < accDepth) {
 //         if (peek(c.io.out.valid)) {
 //           params.proto match {
@@ -345,7 +372,7 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends DspTester(
 //         }
 //         step(1)
 //       }
-      step(2*params.accDepth)
+      step(4*params.accDepth)
     }
   }
   

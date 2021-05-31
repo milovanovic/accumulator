@@ -21,9 +21,11 @@ class AccFirstStageSpec extends FlatSpec with Matchers {
   behavior of "First stage of the accumulator"
   
   for (accDepthCompile <- Seq(4, 16, 32)) {
+  //for (accDepthCompile <- Seq(4)) {
     for (numWinCompile <- Seq(2, 4, 16)) {
+    //for (numWinCompile <- Seq(4)) {
       for (accDepthReg <- (1 to log2Ceil(accDepthCompile)).map(depth => pow(2,depth).toInt)) {
-        for (numWinReg <- (1 to log2Ceil(numWinCompile)).map(numWin => pow(2,numWin).toInt)) {
+        for (numWinReg <- (0 to log2Ceil(numWinCompile)).map(numWin => pow(2,numWin).toInt)) {
           it should f"work for FixedPoint, accumulator depth $accDepthCompile, number of windows is $numWinCompile, accDepthReg value is $accDepthReg, numWinReg is $numWinReg" in {
             val params = AccParams(
               proto = proto,

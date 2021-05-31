@@ -12,6 +12,8 @@ import dsptools.numbers._
 import chisel3.experimental.FixedPoint
 import chisel3.internal.requireIsChiselType
 
+import chisel3.stage.{ChiselGeneratorAnnotation, ChiselStage}
+
 import scala.math._
 
 class AccIO[T <: Data: Real] (params: AccParams[T]) extends Bundle {
@@ -72,11 +74,18 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
     }
     //1
     is (State.sInitStore) {
-    
       when (cntAcc === (accDepthReg - 1.U) && io.in.fire() && io.lastIn) {
         state := State.sLoad
+        ///// added to handle numWinRegs equal to 1 //////
+        when (~io.out.ready) {
+          last := true.B
+        }
+        /////////////////////////////////////////////////
       }
-//      .elsewhen (cntAcc === (accDepthReg - 1.U) && io.in.fire) {
+      ///// added to handle accWindowsReg equal to one!
+      .elsewhen (cntAcc === (accDepthReg - 1.U) && io.in.fire && accWindowsReg === 1.U) {
+        state := State.sLoadAndStore
+      }
       .elsewhen (cntAcc === (accDepthReg - 1.U) && io.in.fire || (cntAcc > (accDepthReg - 1.U))) {
         state := State.sStoreAndAcc
       }
@@ -97,6 +106,9 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
     is (State.sLoadAndStore) {
       when (io.in.fire() && io.lastIn) {
         state := State.sLoad
+        when (~io.out.ready) {
+          last := true.B
+        }
       }
       .elsewhen (cntLoad === (accDepthReg - 1.U) && io.out.fire() && cntAcc < (accDepthReg - 1.U)) {
         state := State.sInitStore
@@ -104,9 +116,17 @@ class Accumulator [T <: Data: Real: BinaryRepresentation] (val params: AccParams
         accDepthReg := io.accDepthReg
       }
       .elsewhen (cntLoad === (accDepthReg - 1.U) && io.out.fire() && io.in.fire() && cntAcc === (accDepthReg - 1.U)) {
-        state := State.sStoreAndAcc
-        accWindowsReg := io.accWindowsReg
-        accDepthReg := io.accDepthReg
+        // added  to handle situation when accWindowsReg is equal to 1
+        when (io.accWindowsReg === 1.U) {
+          state := State.sLoadAndStore
+          accWindowsReg := io.accWindowsReg
+          accDepthReg := io.accDepthReg
+        }
+        .otherwise {
+          state := State.sStoreAndAcc
+          accWindowsReg := io.accWindowsReg
+          accDepthReg := io.accDepthReg
+        }
         // this transition is never going to happen if bitReversal is included
       }
     }
@@ -222,5 +242,15 @@ object AccApp extends App
     protoAcc = FixedPoint(64.W, 14.BP)
     // others parameters have default values
   )
-  chisel3.Driver.execute(args,()=>new Accumulator(params))
+   val arguments = Array(
+    "-X", "verilog",
+    "--repl-seq-mem", "-c:Accumulator:-o:mem.conf",
+    "--log-level", "info",
+    "--target-dir", "./rtl/Accumulator",
+  )
+
+  //generate blackbox-es for memories
+  (new ChiselStage).execute(arguments, Seq(ChiselGeneratorAnnotation(() =>new Accumulator(params))))
+
+  //chisel3.Driver.execute(args,()=>new Accumulator(params))
 }

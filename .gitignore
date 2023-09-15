@@ -1,10 +1,10 @@
 test_run_dir/
+
 *.fir
 *.v
-*.conf
-*.json
+*.zip
 
-
+.idea
+.bsp/
 target/
 project/
-verilog/

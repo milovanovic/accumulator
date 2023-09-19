@@ -7,7 +7,7 @@ import chisel3.util._
 import fixedpoint._
 import org.scalatest.flatspec.AnyFlatSpec
 import chiseltest._
-import scala.util.{Random}
+import scala.util.Random
 import scala.math.pow
 
 class AccFirstStageSpec extends AnyFlatSpec with ChiselScalatestTester {

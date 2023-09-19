@@ -1,6 +1,7 @@
 package accumulator
 
-import chisel3.Data
+import breeze.numerics.abs
+import chisel3.{Data, SInt, UInt}
 import chisel3.util._
 import chiseltest.iotesters.PeekPokeTester
 import dsptools.misc.PeekPokeDspExtensions
@@ -45,7 +46,7 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
     params:   AccParams[T],
     numWind:  Int,
     accDepth: Int,
-    tol:      Int = 3
+    tol:      Double = 0.5
   ) {
     require(accDepth <= params.accDepth)
     require(
@@ -91,6 +92,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
               case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
               case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             }*/
+          params.proto match {
+            case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+            case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+            case _ =>
+              assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+          }
           cntOut += 1
         }
       }
@@ -103,6 +110,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
             case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
           }*/
+        params.proto match {
+          case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+          case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+          case _ =>
+            assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+        }
         output = output :+ peek(c.io.out.bits)
         cntOut += 1
       }
@@ -181,6 +194,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
               case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
               case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             }*/
+          params.proto match {
+            case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+            case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+            case _ =>
+              assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+          }
           cntOut += 1
         }
       }
@@ -198,6 +217,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
             case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
           }*/
+        params.proto match {
+          case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+          case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+          case _ =>
+            assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+        }
         output = output :+ peek(c.io.out.bits)
         cntOut += 1
       }
@@ -241,6 +266,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
               case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
               case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             }*/
+          params.proto match {
+            case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+            case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+            case _ =>
+              assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+          }
           cntOut += 1
         }
       }
@@ -255,6 +286,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
             case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
           }*/
+        params.proto match {
+          case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+          case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+          case _ =>
+            assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+        }
         output = output :+ peek(c.io.out.bits)
         cntOut += 1
       }
@@ -300,6 +337,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
             case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
           }*/
+        params.proto match {
+          case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+          case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+          case _ =>
+            assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+        }
         output = output :+ peek(c.io.out.bits)
         cntOut += 1
       }
@@ -387,7 +430,7 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
     params:   AccParams[T],
     numWind:  Int,
     accDepth: Int,
-    tol:      Int = 3
+    tol:      Double = 0.5
   ) = {
     require(accDepth <= params.accDepth)
     require(
@@ -395,7 +438,7 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
       "Number of accumulated fft windows should be less or equal to parametar maxNumWindows"
     )
     require(isPow2(numWind), s"Maximum number of accumulated fft windows shall be power of 2")
-    require(params.bitReversal == true)
+    require(params.bitReversal)
 
     var output = Seq[Double]()
     val signalRef = bitrevorder_data(signal)
@@ -435,6 +478,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
               case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
               case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             }*/
+          params.proto match {
+            case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+            case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+            case _ =>
+              assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+          }
           cntOut += 1
         }
       }
@@ -447,6 +496,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
             case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
           }*/
+        params.proto match {
+          case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+          case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+          case _ =>
+            assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+        }
         output = output :+ peek(c.io.out.bits)
         cntOut += 1
       }
@@ -503,6 +558,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
               case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
               case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             }*/
+          params.proto match {
+            case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+            case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+            case _ =>
+              assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+          }
           cntOut += 1
         }
         step(1)
@@ -523,6 +584,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
             case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
           }*/
+        params.proto match {
+          case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+          case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+          case _ =>
+            assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+        }
         output = output :+ peek(c.io.out.bits)
         cntOut += 1
       }
@@ -570,6 +637,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
               case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
               case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             }*/
+          params.proto match {
+            case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+            case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+            case _ =>
+              assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+          }
           cntOut += 1
         }
         step(1)
@@ -588,6 +661,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
             case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
           }*/
+        params.proto match {
+          case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+          case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+          case _ =>
+            assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+        }
         output = output :+ peek(c.io.out.bits)
         cntOut += 1
       }
@@ -634,6 +713,12 @@ class AccumulatorTester[T <: chisel3.Data](c: Accumulator[T]) extends PeekPokeTe
             case dspR: DspReal => realTolDecPts.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
             case _ => fixTolLSBs.withValue(tol) { expect(c.io.out.bits, signalRef(cntOut)) }
           }*/
+        params.proto match {
+          case uInt: UInt => expect(c.io.out.bits, signalRef(cntOut))
+          case sInt: SInt => expect(c.io.out.bits, signalRef(cntOut))
+          case _ =>
+            assert(abs(signalRef(cntOut) - peek(c.io.out.bits)) <= tol, "Mismatch!!!")
+        }
         output = output :+ peek(c.io.out.bits)
         cntOut += 1
       }
